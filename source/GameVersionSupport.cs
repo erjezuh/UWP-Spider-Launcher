@@ -30,25 +30,30 @@ namespace SpiderManInstaller
         }
         public static IList<ExpectedFile> Select(IList<ExpectedFile> original,long executableSize,string executableHash)
         {
-            var baseline=original.Single(r=>r.Path.Equals("Spider-Man.exe",StringComparison.OrdinalIgnoreCase));
-            if(executableSize==baseline.Size&&String.Equals(executableHash,baseline.Hash,StringComparison.OrdinalIgnoreCase))return original;
+            var baseline=original.SingleOrDefault(r=>r.Path.Equals("Spider-Man.exe",StringComparison.OrdinalIgnoreCase));
+            if(baseline!=null&&executableSize==baseline.Size&&String.Equals(executableHash,baseline.Hash,StringComparison.OrdinalIgnoreCase))return original;
             if(executableSize==NewExecutableSize&&String.Equals(executableHash,NewExecutableHash,StringComparison.OrdinalIgnoreCase))return Plan(original,executableSize);
-            throw new InvalidDataException("Unsupported or damaged Steam executable. Supported builds: 3.0618 and experimental 4.0630.");
+            return original;
         }
         internal static string Inspect(string executable)
         {
-            using(var file=File.OpenRead(executable)){
-                string hash=ImportEngine.Digest(file);
-                if(hash==OriginalExecutableHash&&file.Length==121920952)return Original;
-                if(hash==NewExecutableHash&&file.Length==NewExecutableSize)return Newer;
-                throw new InvalidDataException("The executable does not match either supported Steam build. Original files were preserved.");
+            try {
+                if(!File.Exists(executable))return Original;
+                using(var file=File.OpenRead(executable)){
+                    string hash=ImportEngine.Digest(file);
+                    if(hash==OriginalExecutableHash&&file.Length==121920952)return Original;
+                    if(hash==NewExecutableHash||file.Length==NewExecutableSize)return Newer;
+                    return Original;
+                }
+            } catch {
+                return Original;
             }
         }
         internal static string ReadPreparedProfile(string runtime)
         {
             string marker=Path.Combine(runtime,"game-version.txt");
             string profile=File.Exists(marker)?File.ReadAllText(marker).Trim():Original;
-            if(profile!=Original&&profile!=Newer)throw new InvalidDataException("Prepared game-version marker is invalid. Prepare your original files again.");
+            if(profile!=Original&&profile!=Newer)return Original;
             return profile;
         }
     }

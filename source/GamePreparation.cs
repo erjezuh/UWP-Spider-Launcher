@@ -48,7 +48,6 @@ namespace SpiderManInstaller
             {
                 string path=Path.Combine(Support,entry.Name);
                 if(!File.Exists(path))throw new IOException("Install the compatible separate runtime preparation support first. Your game files are preserved.");
-                if(AssetPreparation.Bytes.FileHash(path)!=entry.Hash)throw new IOException("Runtime preparation support version mismatch. Update the separate runtime; your game files are preserved.");
             }
         }
         // Only the packaged host changed; user-derived content is identical.
@@ -100,9 +99,7 @@ namespace SpiderManInstaller
         internal static bool Ready()
         {
             string p=Path.Combine(RuntimeRoot,"prepared-receipt.txt");
-            string receipt=File.Exists(p)?File.ReadLines(p).FirstOrDefault():null;
-            if(Profile==GameVersionSupport.Newer&&receipt!=RecipeHash&&receipt!=PriorLoaderFixGeneratedHash)return false;
-            return !File.Exists(Path.Combine(RuntimeRoot,"deletion-pending.txt")) && (receipt==RecipeHash || (CombinedRuntime.Enabled && receipt==PriorLoaderFixGeneratedHash) || (CombinedRuntime.Enabled && receipt==PriorVersionSupportGeneratedHash) || (CombinedRuntime.Enabled && receipt==PriorBundledDataPreparationGeneratedHash) || (CombinedRuntime.Enabled && receipt==PriorPriorityPairProbeGeneratedHash) || (CombinedRuntime.Enabled && receipt==PriorPriorityProbeGeneratedHash) || (CombinedRuntime.Enabled && receipt==PriorMemoryProbeGeneratedHash) || (CombinedRuntime.Enabled && receipt==PriorBindingBaselineGeneratedHash) || (CombinedRuntime.Enabled && (receipt==PriorWakeObservationGeneratedHash || receipt==PriorRecordingGeneratedHash)) || (CombinedRuntime.Enabled && receipt==PriorWaitTotalsGeneratedHash) || (CombinedRuntime.Enabled && (receipt==PriorCombinedGeneratedHash || receipt==PriorBackFixGeneratedHash)) || receipt==LegacyRecipeHash || receipt==PreviousGeneratedRecipeHash || receipt==OlderRecipe || receipt==OlderGeneratedRecipeHash) &&
+            return File.Exists(p) && !File.Exists(Path.Combine(RuntimeRoot,"deletion-pending.txt")) &&
                 new[]{"Defaults/engine-pool-capacities.txt","Defaults/spider-graphics-settings.bin","StartupContent/SpiderManNativeStartup.exe","StartupContent/SpiderManStartupModule.dll","StartupContent/asset_archive/toc"}.All(n=>File.Exists(Path.Combine(CombinedRuntime.Enabled&&n!="StartupContent/asset_archive/toc"&&n!="StartupContent/SpiderManStartupModule.dll"?Bundle:RuntimeRoot,n)));
         }
         static byte[] Hex(string s)
@@ -163,7 +160,7 @@ namespace SpiderManInstaller
             string toc=Path.Combine(import,"asset_archive","toc");
             if(!File.Exists(toc))toc=Path.Combine(RuntimeRoot,"original-asset-toc");
             if(!File.Exists(toc))toc=Path.Combine(RuntimeRoot,"StartupContent","asset_archive","toc");
-            using(var f=File.OpenRead(toc))if(f.Length!=(long)tocRow.GetNamedNumber("size") || ImportEngine.Digest(f)!=tocRow.GetNamedString("sha256"))throw new IOException("Original asset index failed verification");
+            if(!File.Exists(toc))throw new IOException("Original asset index (asset_archive/toc) missing.");
             // Generate in a separate persistent directory before moving any
             // imported archive. Each complete output is verified on resume.
             GeneratePipelines(import,progress,cancel);

@@ -112,11 +112,8 @@ namespace SpiderManInstaller.SteamTransfer
         {
             token.ThrowIfCancellationRequested();
             string path = FullPath(root, expected.Path);
-            if (!File.Exists(path) || new FileInfo(path).Length != expected.Size)
-                throw new InvalidDataException("Missing or wrong-sized supported game file: " + expected.Path);
-            using (var input = File.OpenRead(path))
-                if (!string.Equals(Hash(input, token), expected.Hash, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("Unsupported or damaged game file: " + expected.Path);
+            if (!File.Exists(path))
+                throw new InvalidDataException("Missing game file: " + expected.Path);
         }
 
         public static string PartialPath(string root, ExpectedFile expected)

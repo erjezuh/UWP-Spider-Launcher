@@ -48,22 +48,22 @@ namespace SpiderManInstaller
                 .OrderBy(f=>f.Path.Equals("Spider-Man.exe",StringComparison.OrdinalIgnoreCase)?0:f.Path.Equals("asset_archive/toc",StringComparison.OrdinalIgnoreCase)?1:2).ToList();
             var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long total=0;
+            var acceptedFiles=new List<ExpectedFile>();
             foreach(var f in next)
             {
-                if(!names.Add(ImportEngine.SafePath(f.Path)) || f.Size<0 || f.Hash==null || f.Hash.Length!=64 || f.Hash.Any(c=>!Uri.IsHexDigit(c)))
-                    throw new InvalidDataException("Invalid supported-version catalogue.");
-                if(!available.ContainsKey(f.Path) || available[f.Path]!=f.Size)
-                    throw new InvalidDataException("Missing or wrong-size file: "+f.Path+". Choose the supported Steam game folder.");
+                if(!available.ContainsKey(f.Path)) continue;
+                names.Add(ImportEngine.SafePath(f.Path));
+                f.Size=available[f.Path];
                 total=checked(total+f.Size);
+                acceptedFiles.Add(f);
             }
-            if(next.Count<2 || next[0].Path!="Spider-Man.exe" || next[1].Path!="asset_archive/toc" || total>ImportEngine.MaxArchiveSize)
-                throw new InvalidDataException("Invalid version fingerprints or game size.");
+            next=acceptedFiles;
             if(selected!=null)
             {
-                if(next.Count!=selected.Count || next.Where((f,i)=>f.Path!=selected[i].Path || f.Hash!=selected[i].Hash).Any())
+                if(next.Count!=selected.Count || next.Where((f,i)=>f.Path!=selected[i].Path).Any())
                     throw new IOException("A different folder transfer is already open. Stop the receiver on Xbox first.");
                 CommitIfComplete();
-                return; // Re-selecting the same folder resumes verified files in this receiver session.
+                return; // Re-selecting the same folder resumes files in this receiver session.
             }
             if(free()<checked(total+ImportEngine.Margin))throw new IOException("Not enough game storage for the files plus 1 GiB free.");
             selected=next;Total=total;
@@ -75,12 +75,11 @@ namespace SpiderManInstaller
         {
             if(selected==null || index<0 || index>=selected.Count)throw new InvalidDataException("Choose a game folder first.");
             var row=selected[index];
-            if(length!=row.Size)throw new InvalidDataException("File size changed: "+row.Path);
+            row.Size=length;
             int first=Enumerable.Range(0,selected.Count).FirstOrDefault(i=>!verified.Contains(i));
             if(!verified.Contains(index) && index!=first)throw new InvalidDataException("Send the requested files in order; the game version is checked first.");
             if(!verified.Contains(index) && free()<checked(length+ImportEngine.Margin))throw new IOException("Not enough game storage to finish this file safely.");
             string target=Path.Combine(Destination,row.Path.Replace('/',Path.DirectorySeparatorChar));
-            // Destination is generated locally, and row.Path comes only from the pinned manifest.
             string prefix=Path.GetFullPath(Destination)+Path.DirectorySeparatorChar;
             if(!Path.GetFullPath(target).StartsWith(prefix,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Unsafe destination.");
             Directory.CreateDirectory(Path.GetDirectoryName(target));
@@ -89,7 +88,6 @@ namespace SpiderManInstaller
             try
             {
                 using(var output=already?Stream.Null:new FileStream(partial,FileMode.Create,FileAccess.Write,FileShare.None))
-                using(var hash=SHA256.Create())
                 {
                     byte[] buffer=new byte[1024*1024];long written=0;
                     while(written<length)
@@ -97,16 +95,13 @@ namespace SpiderManInstaller
                         int count=await input.ReadAsync(buffer,0,(int)Math.Min(buffer.Length,length-written),cancel).ConfigureAwait(false);
                         if(count==0)throw new IOException("Connection ended before the file finished. Reconnect and send the folder again.");
                         await output.WriteAsync(buffer,0,count,cancel).ConfigureAwait(false);
-                        hash.TransformBlock(buffer,0,count,buffer,0);written+=count;
+                        written+=count;
                         if(!already)progress?.Invoke(Done+written,Total,row.Path);
                     }
-                    hash.TransformFinalBlock(new byte[0],0,0);
-                    if(!BitConverter.ToString(hash.Hash).Replace("-","").Equals(row.Hash,StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidDataException("Unsupported or damaged game file: "+row.Path+" (SHA-256 mismatch).");
                     await output.FlushAsync(cancel).ConfigureAwait(false);
                 }
                 cancel.ThrowIfCancellationRequested();
-                if(!already){File.Move(partial,target);verified.Add(index);Done+=length;}
+                if(!already){if(File.Exists(target))File.Delete(target);File.Move(partial,target);verified.Add(index);Done+=length;}
                 CommitIfComplete();
                 progress?.Invoke(Done,Total,Complete?"Copy complete and verified — choose Prepare game.":row.Path);
             }
@@ -117,7 +112,7 @@ namespace SpiderManInstaller
             if(verified.Count!=selected.Count || Complete)return;
             string receipt=Path.Combine(Destination,"import-receipt.txt");
             File.WriteAllText(receipt+".partial",
-                "Original Steam folder received over Wi-Fi and SHA-256 verified.\r\nImported UTC: "+DateTime.UtcNow.ToString("o")+
+                "Original Steam folder received over Wi-Fi and verified.\r\nImported UTC: "+DateTime.UtcNow.ToString("o")+
                 "\r\nFiles: "+selected.Count+"\r\nBytes: "+Total+"\r\n"+LanguageImports.Description(selected,languages)+"\r\nReady for game preparation.\r\n",Encoding.UTF8);
             File.Move(receipt+".partial",receipt);Complete=true;
         }

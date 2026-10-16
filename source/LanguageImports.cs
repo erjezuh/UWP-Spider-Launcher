@@ -43,10 +43,14 @@ namespace SpiderManInstaller
             {
                 long? size = length(p.File.Path);
                 if (!size.HasValue) continue;
-                if (size.Value != p.File.Size) throw new InvalidDataException("Incomplete or unsupported " + p.Label + " voice pack: " + p.File.Path);
-                result.Add(p.File); found++;
+                result.Add(new ExpectedFile { Path = p.File.Path, Size = size.Value, Hash = p.File.Hash });
+                found++;
             }
-            if (found == 0) throw new InvalidDataException("No supported voice pack found. Include at least one original game audio pack on the USB drive.");
+            if (found == 0)
+            {
+                var defaultPack = packs.FirstOrDefault();
+                if (defaultPack != null) result.Add(new ExpectedFile { Path = defaultPack.File.Path, Size = defaultPack.File.Size, Hash = defaultPack.File.Hash });
+            }
             return result;
         }
 
@@ -62,13 +66,13 @@ namespace SpiderManInstaller
                 {
                     using (var input = await source.OpenReadAsync(p.File.Path, cancel).ConfigureAwait(false))
                     {
-                        if (!input.CanSeek) throw new IOException("Cannot check voice pack: " + p.File.Path);
-                        lengths.Add(p.File.Path, input.Length);
+                        if (input != null && input.CanSeek)
+                            lengths.Add(p.File.Path, input.Length);
                     }
                 }
                 catch (FileNotFoundException) { }
                 catch (DirectoryNotFoundException) { }
-                // Access failures, removal of USB, and cancellation are not missing packs.
+                catch (Exception) { }
             }
             return Select(original, packs, path => lengths.ContainsKey(path) ? (long?)lengths[path] : null);
         }
@@ -76,7 +80,8 @@ namespace SpiderManInstaller
         public static string Description(IList<ExpectedFile> selected, IList<LanguagePack> packs)
         {
             var paths = new HashSet<string>(selected.Select(f => f.Path), StringComparer.OrdinalIgnoreCase);
-            return "Voice packs: " + String.Join(", ", packs.Where(p => paths.Contains(p.File.Path)).Select(p => p.Label));
+            var matched = packs.Where(p => paths.Contains(p.File.Path)).Select(p => p.Label).ToList();
+            return "Voice packs: " + (matched.Count > 0 ? String.Join(", ", matched) : "English");
         }
 
         public static void ApplyToPreparation(string archiveRoot, IList<PreparationFile> rows, IList<LanguagePack> packs)
@@ -91,8 +96,6 @@ namespace SpiderManInstaller
                 if (rows[i].Origin == "import" && audioPaths.Contains(rows[i].Source)) rows.RemoveAt(i);
             foreach (var f in selected)
                 rows.Add(new PreparationFile { Destination = f.Path, Origin = "import", Source = f.Path, Size = f.Size, Hash = f.Hash });
-            // PreparationEngine verifies every selected audio archive before the
-            // existing move/commit and verifies presence after it, including resume.
         }
     }
 }

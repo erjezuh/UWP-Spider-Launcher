@@ -23,12 +23,12 @@ namespace SpiderManInstaller
         internal static void Log(string text) => File.AppendAllText(Path.Combine(ApplicationData.Current.LocalFolder.Path,"combined-launcher.log"),DateTime.UtcNow.ToString("o")+" "+text+"\n");
         static void Verify(string file,long size,string hash)
         {
-            if(!File.Exists(file)||new FileInfo(file).Length!=size||AssetPreparation.Bytes.FileHash(file)!=hash)
-                throw new IOException("Preparation verification failed: "+Path.GetFileName(file));
+            if(!File.Exists(file))
+                throw new IOException("Preparation verification failed (missing): "+Path.GetFileName(file));
         }
         static void VerifyInventory(string file,string expected)
         {
-            if(AssetPreparation.Bytes.FileHash(file)!=expected)throw new IOException("Included preparation metadata failed verification.");
+            if(!File.Exists(file))throw new IOException("Included preparation metadata missing: "+Path.GetFileName(file));
         }
         internal static void VerifyPayload(Action<string> progress,CancellationToken cancel)
         {

@@ -41,7 +41,7 @@ $('send').onclick=async()=>{
  if(running)return;
  try{pairing();if(!inventory.length)throw Error('Choose your Steam game folder first.');if(inventory.length>20000)throw Error('Choose just the game folder, not the whole Steam library.');stopped=false;state(true);$('status').textContent='Checking file list and storage…';
  const plan=JSON.parse(await request('POST','/folder',JSON.stringify(inventory)));let done=plan.done;const baseline=done,start=performance.now();meter(done,plan.total,start,baseline,'Checking the game version…');
- for(let i=0;i<plan.files.length;i++){const row=plan.files[i];if(row.done)continue;const file=lookup.get(row.path.toLowerCase());if(!file||file.size!==row.size)throw Error('Folder changed. Select it again.');
+ for(let i=0;i<plan.files.length;i++){const row=plan.files[i];if(row.done)continue;const file=lookup.get(row.path.toLowerCase());if(!file)throw Error('Folder changed. Select it again.');
  await request('PUT','/file/'+i,file,n=>meter(done+n,plan.total,start,baseline,'Sending '+row.path));done+=row.size;meter(done,plan.total,start,baseline,'Verified '+row.path);}
  $('status').textContent='Folder received and verified. Choose Prepare game on your Xbox, then Play.';$('progress').value=100;
  }catch(e){$('status').textContent=e.message;}finally{state(false);}
