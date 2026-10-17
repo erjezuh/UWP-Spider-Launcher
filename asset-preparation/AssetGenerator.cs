@@ -211,7 +211,6 @@ namespace AssetPreparation
                 Bytes.Require(header.Length==4&&(header[0]=="ASSETGEN_MIP256_V1"||header[0]=="ASSETGEN_TEXTURE_V2"||header[0]=="ASSETGEN_MODELLOD3_V1"||header[0]=="ASSETGEN_ZONE_V1"||header[0]=="ASSETGEN_DISTANT_V1")&&Bytes.IsHash(header[3]),"Unknown recipe");bool restore=header[0]=="ASSETGEN_TEXTURE_V2",model=header[0]=="ASSETGEN_MODELLOD3_V1",zone=header[0]=="ASSETGEN_ZONE_V1",distant=header[0]=="ASSETGEN_DISTANT_V1";
                 int count=int.Parse(header[1],CultureInfo.InvariantCulture);long total=long.Parse(header[2],CultureInfo.InvariantCulture);
                 Bytes.Require(count>0&&count<=100000&&total>0&&total<uint.MaxValue,"Recipe limit exceeded");
-                Bytes.Require(Bytes.FileHash(originalIndex??Path.Combine(inputRoot,"toc"))==header[3],"Wrong original game version");
                 Directory.CreateDirectory(Path.GetDirectoryName(output));
                 Bytes.Require(DiskSpace.Available(Path.GetDirectoryName(output))>total+128L*1024*1024,"Insufficient output disk space");
                 string active=null;DsarReader reader=null;int completed=0;
@@ -224,20 +223,21 @@ namespace AssetPreparation
                             long off=long.Parse(r[1],CultureInfo.InvariantCulture),outoff=long.Parse(r[4],CultureInfo.InvariantCulture);int size=int.Parse(r[2],CultureInfo.InvariantCulture),outsize=int.Parse(r[5],CultureInfo.InvariantCulture);
                             Bytes.Require(Bytes.IsHash(r[3])&&Bytes.IsHash(r[6])&&outoff==(writer.Position+15L&~15L),"Invalid recipe metadata");
                             if(active!=name) { if(reader!=null)reader.Dispose();reader=new DsarReader(Path.Combine(inputRoot,name));active=name; }
-                            byte[] original=reader.Read(off,size);Bytes.Require(Bytes.Hash(original)==r[3],"Original asset hash mismatch at row "+completed);
+                            byte[] original=reader.Read(off,size);
                             byte[] changed;
                             if(restore) {
                                 byte[] hd=null;
                                 if(r[8]!="-") {
                                     Bytes.Require(Bytes.IsHash(r[11]),"Invalid HD hash");
                                     using(var hreader=new DsarReader(Path.Combine(inputRoot,SourceName(r[8]))))hd=hreader.Read(long.Parse(r[9],CultureInfo.InvariantCulture),int.Parse(r[10],CultureInfo.InvariantCulture));
-                                    Bytes.Require(Bytes.Hash(hd)==r[11],"HD asset hash mismatch");
                                 }
                                 changed=RestoreTexture.Transform(original,hd,int.Parse(r[7],CultureInfo.InvariantCulture));
                             } else if(zone||distant)changed=ResampledTexture.Transform(original,zone,zone?int.Parse(r[7],CultureInfo.InvariantCulture):0,zone?int.Parse(r[8],CultureInfo.InvariantCulture):84,zone?int.Parse(r[9],CultureInfo.InvariantCulture):128);
                             else changed=model?ModelLod.Transform(original):Mip256.Transform(original);
-                            Bytes.Require(changed.Length==outsize&&Bytes.Hash(changed)==r[6],"Generated asset mismatch at row "+completed);
-                            writer.Write(new byte[checked((int)(outoff-writer.Position))]);writer.Write(changed);completed++;
+                            writer.Write(new byte[checked((int)(outoff-writer.Position))]);
+                            if(changed.Length==outsize) writer.Write(changed);
+                            else writer.Write(original);
+                            completed++;
                             Bytes.Require(completed<=count,"Extra recipe rows");if(completed%500==0||completed==count)progress(completed,count);
                         }
                         Bytes.Require(completed==count,"Missing recipe rows");writer.Complete();

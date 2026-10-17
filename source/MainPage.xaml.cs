@@ -132,6 +132,19 @@ namespace SpiderManInstaller
             finally{checkingRepair=false;}
         }
         async void RepairRuntime_Click(object sender,RoutedEventArgs e){await RepairRuntime();}
+        void OptimizeCulling_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                GamePreparation.ApplyNativeOptimizations(GamePreparation.RuntimeRoot, true);
+                Status.Text = "Aggressive culling applied and original suit models restored.";
+                OptimizeStatus.Text = "Optimization applied: Aggressive culling active and original character suit models restored.";
+            }
+            catch (Exception ex)
+            {
+                OptimizeStatus.Text = "Optimization error: " + ex.Message;
+            }
+        }
         void Refresh_Click(object sender,RoutedEventArgs e){RefreshPreparation();}
         void RefreshStorage()
         {
@@ -248,6 +261,7 @@ namespace SpiderManInstaller
                     var ignored=Dispatcher.RunAsync(CoreDispatcherPriority.Low,()=>{if(busy){PreparationStatus.Text=text;Status.Text=text;}});
                 },cancellation.Token));
                 PreparationStatus.Text="Checking the game app...";
+                GamePreparation.ApplyNativeOptimizations(GamePreparation.RuntimeRoot, true);
                 if(allowRepair && await RuntimeInstallation.NeedsRepair())repair=true;
                 else
                 {

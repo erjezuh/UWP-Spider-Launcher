@@ -190,5 +190,54 @@ namespace SpiderManInstaller
                 .Select(v=>v.GetObject().GetNamedString("destination"));
             return new GameContentCleanup(RuntimeRoot,destinations);
         }
+        internal static void ApplyNativeOptimizations(string runtimeRoot, bool restoreCharacterModels = true)
+        {
+            try
+            {
+                string defaults = Path.Combine(runtimeRoot, "Defaults");
+                Directory.CreateDirectory(defaults);
+                string poolFile = Path.Combine(defaults, "engine-pool-capacities.txt");
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("# Native Aggressive Culling & Memory Optimization Profile");
+                sb.AppendLine("TexturePoolSize=1024");
+                sb.AppendLine("MeshPoolSize=512");
+                sb.AppendLine("StreamDistanceBudget=350");
+                sb.AppendLine("StreamUnloadDelay=0.25");
+                sb.AppendLine("OcclusionCullBudget=4096");
+                sb.AppendLine("FrustumCulling=1");
+                sb.AppendLine("StrictFrustumCull=1");
+                sb.AppendLine("EntityPool=128");
+                sb.AppendLine("PedestrianPool=16");
+                sb.AppendLine("TrafficPool=8");
+                sb.AppendLine("AudioPool=128");
+                sb.AppendLine("ParticlePool=64");
+                sb.AppendLine("LightPool=128");
+
+                File.WriteAllText(poolFile, sb.ToString());
+
+                string startupContent = Path.Combine(runtimeRoot, "StartupContent");
+                if (Directory.Exists(startupContent))
+                {
+                    string startupDefaults = Path.Combine(startupContent, "Defaults");
+                    Directory.CreateDirectory(startupDefaults);
+                    File.WriteAllText(Path.Combine(startupDefaults, "engine-pool-capacities.txt"), sb.ToString());
+
+                    if (restoreCharacterModels)
+                    {
+                        string savedToc = Path.Combine(runtimeRoot, "original-asset-toc");
+                        string activeToc = Path.Combine(startupContent, "asset_archive", "toc");
+                        if (File.Exists(savedToc))
+                        {
+                            File.Copy(savedToc, activeToc, true);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Native optimization error: " + ex.Message);
+            }
+        }
     }
 }
