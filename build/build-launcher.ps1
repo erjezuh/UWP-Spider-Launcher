@@ -1,11 +1,21 @@
-param([string]$VisualStudio = 'C:\Program Files\Microsoft Visual Studio\2022\Community', [string]$SteamKitAssembly, [string]$CombinedRuntimePayloadRoot, [string]$CombinedPreparationSupportRoot)
+param([string]$VisualStudio = 'C:\Program Files\Microsoft Visual Studio\2022\Community', [string]$SteamKitAssembly, [string]$CombinedRuntimePayloadRoot, [string]$CombinedPreparationSupportRoot, [string]$CertificatePath, [string]$CertificatePassword)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $msbuild = Join-Path $VisualStudio 'MSBuild\Current\Bin\MSBuild.exe'
 if ([bool]$CombinedRuntimePayloadRoot -ne [bool]$CombinedPreparationSupportRoot) { throw 'Provide both combined-runtime input directories, or neither for the default launcher build.' }
 & (Join-Path $repo 'asset-preparation\build.ps1') -VisualStudio $VisualStudio
 & (Join-Path $PSScriptRoot 'make-icons.ps1')
-$options = @('/restore','/m:2','/p:Configuration=Release','/p:Platform=x64','/p:PrivateValidation=true','/p:AppxPackageSigningEnabled=false','/p:UapAppxPackageBuildMode=SideloadOnly','/verbosity:minimal','/nologo')
+$options = @('/restore','/m:2','/p:Configuration=Release','/p:Platform=x64','/p:PrivateValidation=true','/p:UapAppxPackageBuildMode=SideloadOnly','/verbosity:minimal','/nologo')
+if ($CertificatePath) {
+    $cert = (Resolve-Path -LiteralPath $CertificatePath).Path
+    $options += '/p:AppxPackageSigningEnabled=true'
+    $options += "/p:PackageCertificateKeyFile=$cert"
+    if ($CertificatePassword) {
+        $options += "/p:PackageCertificatePassword=$CertificatePassword"
+    }
+} else {
+    $options += '/p:AppxPackageSigningEnabled=false'
+}
 if ($SteamKitAssembly) {
     $assembly = (Resolve-Path -LiteralPath $SteamKitAssembly).Path
     $options += "/p:SteamKitAssembly=$assembly"
