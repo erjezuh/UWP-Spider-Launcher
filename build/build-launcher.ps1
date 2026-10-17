@@ -5,7 +5,7 @@ $msbuild = Join-Path $VisualStudio 'MSBuild\Current\Bin\MSBuild.exe'
 if ([bool]$CombinedRuntimePayloadRoot -ne [bool]$CombinedPreparationSupportRoot) { throw 'Provide both combined-runtime input directories, or neither for the default launcher build.' }
 & (Join-Path $repo 'asset-preparation\build.ps1') -VisualStudio $VisualStudio
 & (Join-Path $PSScriptRoot 'make-icons.ps1')
-$options = @('/restore','/m:2','/p:Configuration=Release','/p:Platform=x64','/p:PrivateValidation=true','/p:UapAppxPackageBuildMode=SideloadOnly','/verbosity:minimal','/nologo')
+$options = @('/restore','/m:2','/p:Configuration=Release','/p:Platform=x64','/p:PrivateValidation=true','/p:GenerateAppxPackageOnBuild=true','/p:AppxBundle=Never','/p:UapAppxPackageBuildMode=SideloadOnly','/verbosity:minimal','/nologo')
 if ($CertificatePath) {
     $cert = (Resolve-Path -LiteralPath $CertificatePath).Path
     $options += '/p:AppxPackageSigningEnabled=true'
