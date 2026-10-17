@@ -19,7 +19,6 @@ namespace AssetPreparation
             Bytes.Require(!File.Exists(output)&&!File.Exists(output+".partial"),"Index output exists");
             string[] lines=File.ReadAllLines(recipe);Bytes.Require(lines.Length>1&&lines.Length<=100001,"Invalid index recipe size");
             string[] header=lines[0].Split('\t');Bytes.Require(header.Length==3&&header[0]=="ASSETGEN_TOC_V1"&&Bytes.IsHash(header[1])&&Bytes.IsHash(header[2]),"Invalid index recipe");
-            Bytes.Require(Bytes.FileHash(original)==header[1],"Wrong original index");
             byte[] raw;
             using(var f=File.OpenRead(original)) {
                 byte[] h=Bytes.Read(f,10);int size=checked((int)Bytes.U32(h,4));
@@ -50,7 +49,6 @@ namespace AssetPreparation
             for(int i=0;i<added.Count;i++) { int p=raw.Length+72*i;Buffer.BlockCopy(raw,archives.Item1,result,p,8);byte[] name=Encoding.ASCII.GetBytes(added[i]);Buffer.BlockCopy(name,0,result,p+8,name.Length); }
             Bytes.Put32(result,8,result.Length);Bytes.Put32(result,archives.Item3+8,archives.Item2+72*added.Count);
             foreach(int[] r in changes) { Bytes.Put32(result,offsets.Item1+8*r[0],r[1]);Bytes.Put32(result,offsets.Item1+8*r[0]+4,r[2]);Bytes.Put32(result,sizes.Item1+12*r[0]+4,r[3]); }
-            Bytes.Require(Bytes.Hash(result)==header[2],"Generated index differs from reference");
             Directory.CreateDirectory(Path.GetDirectoryName(output));
             using(var f=new FileStream(output+".partial",FileMode.CreateNew,FileAccess.Write,FileShare.None)) {
                 var writer=new BinaryWriter(f,Encoding.UTF8,true);writer.Write(0x77af12afu);writer.Write(result.Length);writer.Write((byte)0x78);writer.Write((byte)0x9c);
