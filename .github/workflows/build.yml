@@ -1,0 +1,28 @@
+name: Build UWP Spider Launcher
+
+on:
+  push:
+    branches: [ "arena/894f616b-uwp-spider-launcher", "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Launcher
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path packages | Out-Null
+          .\build\build-launcher.ps1 -VisualStudio "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+
+      - name: Upload MSIX Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: UWP-Spider-Launcher-Package
+          path: packages/*.msix
