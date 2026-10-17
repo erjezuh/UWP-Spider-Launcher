@@ -52,6 +52,13 @@ jobs:
               }
           }
 
+          # Collect all required x64 UWP dependencies
+          New-Item -ItemType Directory -Force -Path packages\Dependencies | Out-Null
+          Get-ChildItem -Path "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs" -Recurse -Include *.appx | Where-Object { $_.FullName -like "*\x64\*" -and ($_.Name -like "*NET.Native*" -or $_.Name -like "*VCLibs*") } | ForEach-Object {
+              Write-Output "Found dependency: $($_.FullName)"
+              Copy-Item $_.FullName -Destination "packages\Dependencies\" -Force
+          }
+
           # Ensure all packages are signed with signtool
           $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Select-Object -Last 1).FullName
           Write-Output "Using SignTool at $signtool"
@@ -65,8 +72,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: UWP-Spider-Launcher-Package
-          path: |
-            packages/**/*.msix
-            packages/**/*.appx
-            packages/**/*.cer
-            packages/**/*.msixbundle
+          path: packages/**
