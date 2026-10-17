@@ -50,7 +50,7 @@ namespace SpiderManInstaller
                 UpdateResponsiveLayout();
                 RefreshStorage();
                 RefreshPreparation();
-                if(CombinedRuntime.Enabled)CombinedRuntime.Log("latest_launcher_ui_loaded version=0.6.0.51 play_enabled="+PlayButton.IsEnabled);
+                if(CombinedRuntime.Enabled)CombinedRuntime.Log("latest_launcher_ui_loaded version=0.6.0.52 play_enabled="+PlayButton.IsEnabled);
                 ShowRuntimeSetupResult();
                 (PlayButton.IsEnabled?PlayButton:SteamTile).Focus(FocusState.Programmatic);
 
@@ -132,7 +132,7 @@ namespace SpiderManInstaller
             finally{checkingRepair=false;}
         }
         async void RepairRuntime_Click(object sender,RoutedEventArgs e){await RepairRuntime();}
-        void OptimizeCulling_Click(object sender, RoutedEventArgs e)
+        public void OptimizeCulling_Click(object sender, RoutedEventArgs e)
         {
             try
             {
