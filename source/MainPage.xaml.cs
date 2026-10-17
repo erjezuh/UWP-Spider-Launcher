@@ -50,7 +50,7 @@ namespace SpiderManInstaller
                 UpdateResponsiveLayout();
                 RefreshStorage();
                 RefreshPreparation();
-                if(CombinedRuntime.Enabled)CombinedRuntime.Log("latest_launcher_ui_loaded version=0.6.0.42 play_enabled="+PlayButton.IsEnabled);
+                if(CombinedRuntime.Enabled)CombinedRuntime.Log("latest_launcher_ui_loaded version=0.6.0.51 play_enabled="+PlayButton.IsEnabled);
                 ShowRuntimeSetupResult();
                 (PlayButton.IsEnabled?PlayButton:SteamTile).Focus(FocusState.Programmatic);
 
